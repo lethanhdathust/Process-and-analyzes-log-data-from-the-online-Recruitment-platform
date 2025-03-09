@@ -1,0 +1,17 @@
+FROM apache/zeppelin:0.9.0
+
+# Switch to root user to install dependencies
+USER root
+
+# Install required dependencies and libffi6 manually
+RUN apt-get update && apt-get install -y wget && \
+    wget http://security.ubuntu.com/ubuntu/pool/main/libf/libffi/libffi6_3.2.1-8_amd64.deb && \
+    dpkg -i libffi6_3.2.1-8_amd64.deb && \
+    rm libffi6_3.2.1-8_amd64.deb && \
+    ldconfig
+RUN apt-get install -y nano
+# Verify libffi installation
+RUN ls -l /usr/lib/x86_64-linux-gnu/libffi.so.6 && ldconfig -p | grep libffi
+
+# Switch back to Zeppelin user
+USER 1000

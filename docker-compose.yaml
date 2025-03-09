@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  cassandra:
+    image: bitnami/cassandra:latest
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      # - CASSANDRA_USER=bedancassandra
+      # - CASSANDRA_PASSWORD=bedancassandra
+      - CASSANDRA_PASSWORD_SEEDER=yes  
+      - CASSANDRA_CLUSTER_NAME=bedanCluster
+      - CASSANDRA_NUM_TOKENS=256
+    deploy:
+      resources:
+        limits:
+          memory: 3g
+        reservations:
+          memory: 2g
+    volumes:
+      - cassandra-persistence:/bitnami
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    # restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: bedanroot
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: bedan
+      MYSQL_PASSWORD: bedan
+    ports:
+      - "3306:3306"
+    volumes:
+      # - ./volumes/mysql_data:/var/lib/mysql:rw
+    - mysqldb:/var/lib/mysql
+    user: mysql
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 1g
+
+  spark-master:
+    image: spark-image:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_HOME=/opt/bitnami/spark
+      # - PYSPARK_DRIVER_PYTHON=/opt/bitnami/opt/conda/envs/pyspark_env/bin/python3
+      # - PYSPARK_PYTHON=/opt/bitnami/opt/conda/envs/pyspark_env/bin/python3
+    ports:
+      - "8080:8080"  # Spark Web UI
+      - "7077:7077"  # Spark Master Port
+      - "6066:6066"  # Spark Master REST Port
+      - "4040:4040"  # Spark Master REST Port
+    volumes:
+      - spark-master-data:/opt/bitnami/spark
+      - python-exe-spark:/opt/bitnami/python
+  spark-worker:
+    image: spark-image:latest
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_HOME=/opt/bitnami/spark
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      # - PYSPARK_DRIVER_PYTHON=/opt/bitnami/opt/conda/envs/pyspark_env/bin/python3
+      # - PYSPARK_PYTHON=/opt/bitnami/opt/conda/envs/pyspark_env/bin/python3
+    ports:
+      - "8081:8081"
+    volumes:
+      - spark-master-data:/opt/bitnami/spark/
+      - python-exe-spark:/opt/bitnami/python
+  zeppelin:
+    image: zep-image:latest
+    container_name: zeppelin
+    depends_on:
+      - spark-master
+    ports:
+      - "8090:8080"
+    environment:
+      - ZEPPELIN_ADDR=0.0.0.0
+      - ZEPPELIN_PORT=8080
+      - SPARK_MASTER=spark://spark-master:7077
+      # - PYSPARK_DRIVER_PYTHON=/opt/bitnami/opt/conda/envs/pyspark_env/bin/python3
+      # - PYSPARK_PYTHON=/opt/bitnami/opt/conda/envs/pyspark_env/bin/python3
+    # user: "zeppelin"
+    volumes:
+      # - ./volumes/zeppelin/logs:/logs
+      - zeppelin:/opt/zeppelin/
+      - spark-master-data:/opt/bitnami/spark
+      - python-exe-spark:/opt/bitnami/python
+      # - ./volumes/zeppelin/conf/interpreter.json:/zeppelin/conf/interpreter.json
+      # - ./volumes/spark-master:/opt/bitnami/spark
+
+volumes:  
+  zeppelin:
+    driver: local
+  spark-master-data:
+    driver: local
+  spark-master-python-version:
+    driver: local
+  mysql_data:
+  zeppelin_data:
+  cassandra-persistence:
+    driver: local
+  python-exe-spark:
+    driver: local
+  mysqldb:
+    driver: local
+  zeppelin_notebook:
