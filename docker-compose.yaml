@@ -22,7 +22,7 @@ services:
       - cassandra-persistence:/bitnami
 
   mysql:
-    image: mysql:5.7
+    image: mysql:8.0-debian
     container_name: mysql
     # restart: always
     environment:
@@ -55,8 +55,10 @@ services:
       - "8080:8080"  # Spark Web UI
       - "7077:7077"  # Spark Master Port
       - "6066:6066"  # Spark Master REST Port
-      - "4040:4040"  # Spark Master REST Port
+      - "4045:4040"  # Spark Master REST Port
+      - "18080:18080"  # Spark Master REST Port
     volumes:
+      - zeppelin:/opt/zeppelin/
       - spark-master-data:/opt/bitnami/spark
       - python-exe-spark:/opt/bitnami/python
   spark-worker:
@@ -73,6 +75,7 @@ services:
     ports:
       - "8081:8081"
     volumes:
+      - zeppelin:/opt/zeppelin/
       - spark-master-data:/opt/bitnami/spark/
       - python-exe-spark:/opt/bitnami/python
   zeppelin:
@@ -82,6 +85,8 @@ services:
       - spark-master
     ports:
       - "8090:8080"
+      - "4040:4040"  # Spark Master REST Port
+
     environment:
       - ZEPPELIN_ADDR=0.0.0.0
       - ZEPPELIN_PORT=8080
@@ -96,6 +101,25 @@ services:
       - python-exe-spark:/opt/bitnami/python
       # - ./volumes/zeppelin/conf/interpreter.json:/zeppelin/conf/interpreter.json
       # - ./volumes/spark-master:/opt/bitnami/spark
+
+  mysql-workbench:
+    image: lscr.io/linuxserver/mysql-workbench:latest
+    container_name: mysql-workbench
+    depends_on:
+      - mysql
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - MYSQL_ROOT_PASSWORD=bedanroot
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - mysql-workbench-data:/config
+    restart: unless-stopped
 
 volumes:  
   zeppelin:
@@ -113,3 +137,5 @@ volumes:
   mysqldb:
     driver: local
   zeppelin_notebook:
+  mysql-workbench-data:
+    driver: local

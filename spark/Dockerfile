@@ -4,7 +4,6 @@ FROM bitnami/spark:3.1.2
 USER root
 RUN apt-get update && apt-get install -y nano iputils-ping net-tools curl vim libffi6
 # RUN apt-get update && apt-get install -y nano iputils-ping net-tools curl vim
-
 # Switch back to Spark user
 USER 1001
 
@@ -15,5 +14,7 @@ USER 1001
 # ENV LD_PRELOAD=""
 RUN echo "PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3" >> /opt/bitnami/spark/conf/spark-env.sh && \
     echo "PYSPARK_PYTHON=/opt/bitnami/python/bin/python3" >> /opt/bitnami/spark/conf/spark-env.sh
-# Ensure the script has execution permissions
+USER root
+RUN pip install pandas && pip install mysql-connector-python && pip install cassandra-driver
+    # Ensure the script has execution permissions
 # RUN chmod +x /opt/bitnami/spark/conf/spark-env.sh
