@@ -29,6 +29,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      # KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -49,7 +50,7 @@ services:
       broker:
         condition: service_healthy
     ports:
-      - "8081:8081"
+      - "8071:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: broker:29092
@@ -86,17 +87,23 @@ services:
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
       # Required for version newer than 5.5.0
-      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/home/appuser/kafka_plugin_dir"
       # Install connectors
       CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
+    # volumn:
+    #   - ./kafka-connect-jdbc:/usr/share/confluent-hub-components
     command:
       - bash
       - -c
       - |
+        echo "Downloading kafka-connect-cassandra-sink plugin"
+        wget https://downloads.datastax.com/kafka/kafka-connect-cassandra-sink.tar.gz
+        tar -xvf kafka-connect-cassandra-sink.tar.gz -C /usr/share/confluent-hub-components/
         echo "Installing connector plugins"
         confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:latest
         confluent-hub install --no-prompt debezium/debezium-connector-mysql:latest
-        confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:latest
+        confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:
+        # confluent-hub install --no-prompt confluentinc/kafka-connect-cassandra:latest
         #
         echo "Launching Kafka Connect worker"
         /etc/confluent/docker/run &
@@ -130,3 +137,16 @@ services:
       CONFLUENT_METRICS_TOPIC_REPLICATION: 1
       CONTROL_CENTER_CONNECT_CONNECT_CLUSTER: connect:8083
       PORT: 9021
+  kafka-ui:
+      image: provectuslabs/kafka-ui:latest
+      container_name: kafka-ui-provec
+      depends_on:
+        broker:
+          condition: service_healthy
+      ports:
+        - "8096:8080"
+      environment:
+        KAFKA_CLUSTERS_0_NAME: local
+        KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: broker:29092
+        KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+        KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081

@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+
+  webserver:
+    image: airflow-myimg:latest
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Airflow Core Settings
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      
+      # Webserver Settings
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-default_secret_key}
+      
+      # Logging
+      AIRFLOW__LOGGING__COLORED_CONSOLE_LOG: 'true'
+      AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    ports:
+      - "8095:8080"
+    command: 
+      - bash
+      - -c
+      - |
+        airflow db init
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Anonymous \
+          --lastname Admin \
+          --role Admin \
+          --email admin@example.org
+        airflow webserver
+
+  scheduler:
+    image: airflow-myimg:latest
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      webserver:
+        condition: service_started
+    environment:
+      # Airflow Core Settings
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      
+      # Logging
+      AIRFLOW__LOGGING__COLORED_CONSOLE_LOG: 'true'
+      AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    command: 
+      - bash
+      - -c
+      - |
+        apt-get update
+        apt-get install -y openjdk-11-jdk
+        airflow scheduler
+
+volumes:
+  postgres-db-volume:
+    driver: local
+
+# Optional: Add network configuration if needed
