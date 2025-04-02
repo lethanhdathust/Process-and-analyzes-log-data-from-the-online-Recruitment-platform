@@ -4,3 +4,4 @@ test.txt
 .env
 dags/__pycache__
 logs
+command.sh
