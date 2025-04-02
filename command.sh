@@ -27,3 +27,89 @@ docker cp /home/dell/Downloads/mysql-connector-j-9.2.0/mysql-connector-j-9.2.0.j
 /opt/zeppelin/interpreter/spark/dep/mysql-connector-j-9.2.0.jar
 
 
+https://downloads.datastax.com/kafka/kafka-connect-cassandra-sink.tar.gz
+
+kafka-console-consumer --bootstrap-server broker:9092 --topic gen_data --from-beginning
+connect-standalone /etc/kafka/connect-standalone.properties /etc/kafka/cassandra-sink-standalone.properties.sample
+
+name=cassandra-sink
+connector.class=com.datastax.oss.kafka.sink.CassandraSinkConnector
+topics=data_gen
+tasks.max=1
+contactPoints=cassandra
+loadBalancing.localDc=datacenter1
+keyspace=bedan
+table=tracking
+mapping=id=key, message=value.message, timestamp=value.timestamp
+
+auth.provider=DsePlainTextAuthProvider
+auth.username=my_cassandra_user
+auth.password=my_cassandra_password
+
+curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+    "name": "cassandra-sink2",
+    "config": {
+        "connector.class": "com.datastax.oss.kafka.sink.CassandraSinkConnector",
+        "tasks.max": "1",
+        "topics": "gen_data4",
+        "contactPoints": "172.18.0.6",
+        "loadBalancing.localDc": "datacenter1",
+        "port": "9042",
+        "auth.provider": "PLAIN",
+        "auth.username": "cassandra",
+        "auth.password": "cassandra",
+        "topic.gen_data4.bedan.tracking.mapping": "bid=value.bid,campaign_id=value.campaign_id,create_time=value.create_time,custom_track=value.custom_track,group_id=value.group_id,job_id=value.job_id,publisher_id=value.publisher_id,ts=value.ts",
+        "topic.gen_data4.bedan.tracking.ttlTimeUnit": "SECONDS",
+        "topic.gen_data4.bedan.tracking.timestampTimeUnit": "MICROSECONDS",
+        "ssl.provider": "None"
+    }
+}'
+curl -X POST http://localhost:8083/connectors -H "Content-Type: application/json" -d '{
+    "name": "cassandra-sink2",
+    "config": {
+        "connector.class": "com.datastax.oss.kafka.sink.CassandraSinkConnector",
+        "tasks.max": "1",
+        "topics": "gen_data4",
+        "contactPoints": "172.18.0.6",
+        "loadBalancing.localDc": "datacenter1",
+        "port": "9042",
+        "auth.provider": "PLAIN",
+        "auth.username": "cassandra",
+        "auth.password": "cassandra",
+        "topic.gen_data4.bedan.tracking.mapping": "bid=value.bid,campaign_id=value.campaign_id,create_time=value.create_time,custom_track=value.custom_track,group_id=value.group_id,job_id=value.job_id,publisher_id=value.publisher_id,ts=value.ts",
+        "topic.gen_data4.bedan.tracking.ttlTimeUnit": "SECONDS",
+        "topic.gen_data4.bedan.tracking.timestampTimeUnit": "MICROSECONDS",
+        "ssl.provider": "None",
+        
+        "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter.schemas.enable": "false"
+    }
+}'
+
+
+# list cac connector plugin hien co
+curl -s http://localhost:8083/connector-plugins | jq
+# xem cac connector duoc tao
+curl -s http://localhost:8083/connectors | jq .
+
+#  Xem trạng thái của một Connector cụ thể
+curl -s http://localhost:8083/connectors/<connector-name>/status | jq .
+# ex
+curl -s http://localhost:8083/connectors/cassandra-sink/status | jq .
+curl -s http://localhost:8083/connectors/sink/status | jq .
+
+# Cách 1: Restart Connector (Cách đơn giản nhất)
+curl -X POST http://localhost:8083/connectors/<connector-name>/restart
+curl -X POST http://localhost:8083/connectors/sink/restart
+
+# xoa 1 connector
+curl -X DELETE http://localhost:8083/connectors/cassandra-sink
+
+
+curl -s "http://localhost:8083/connectors/cassandra-sink/status" | \ jq '.tasks[0l.state'
+
+
+
+nano /usr/share/confluent-hub-components/kafka-connect-cassandra-sink-1.4.0/conf/cassandra-sink-standalone.properties

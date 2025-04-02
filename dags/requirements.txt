@@ -1,0 +1,5 @@
+pandas
+mysql-connector-python==3.29.2
+cassandra-driver
+pyspark
+apache-airflow
